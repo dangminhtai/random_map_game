@@ -11,13 +11,16 @@ def op_det2(matrix):
 
 
 class MatrixPRNG:
-    def __init__(self, seed, mod=594):
-        # Derive a 2x2 starting matrix from a single seed
-        # We use a simple scheme to populate the initial 2x2 matrix
-        self.result_matrix = [
-            [seed, (seed * 31 + 7) % mod],
-            [(seed * 17 + 11) % mod, (seed * 13 + 109) % mod]
-        ]
+    def __init__(self, seed=None, matrix=None, mod=594):
+        # Use provided matrix or derive from seed
+        if matrix:
+            self.result_matrix = [list(row) for row in matrix]
+        else:
+            s = seed if seed is not None else 42
+            self.result_matrix = [
+                [s, (s * 31 + 7) % mod],
+                [(s * 17 + 11) % mod, (s * 13 + 109) % mod]
+            ]
         self.mod = mod
         self.count = 0
         self.queue = []
@@ -31,9 +34,6 @@ class MatrixPRNG:
             xi = det2(new_matrix) % self.mod
             self.result_matrix[0].append(xi)
             
-            # yi uses result_matrix[0][i+1], xi, result_matrix[1][i], result_matrix[1][i+1]
-            # Since we just appended xi, it's at result_matrix[0][-1]
-            # i+1 is len(result_matrix[0]) - 2
             i = self.count
             yi = op_det2([[self.result_matrix[0][i+1], xi],
                           [self.result_matrix[1][i], self.result_matrix[1][i+1]]]) % self.mod
@@ -46,8 +46,8 @@ class MatrixPRNG:
         return val / self.mod
 
 
-def generate_map(width, height, seed):
-    prng = MatrixPRNG(seed)
+def generate_map(width, height, seed=None, matrix=None, mod=594):
+    prng = MatrixPRNG(seed=seed, matrix=matrix, mod=mod)
     game_map = []
 
     # Generate base terrain

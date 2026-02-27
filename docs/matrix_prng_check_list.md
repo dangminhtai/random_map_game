@@ -18,7 +18,9 @@
 ## Phase 4: UI/UX Consistency
 - [x] Ensure `main.py` (Console) still works with the new logic <!-- id: 230 -->
 - [x] Ensure `pygame_main.py` (GUI) handles the new seed logic correctly <!-- id: 231 -->
+- [/] Implement multi-field input for Matrix (m00-m11) and MOD <!-- id: 232 -->
 
 ## Phase 5: Verification & Testing
 - [x] Compare output consistency with user's provided snippet <!-- id: 240 -->
 - [x] Test map variation (ensure different seeds produce different-looking maps) <!-- id: 241 -->
+- [ ] Verify custom matrix parameters generate expected maps <!-- id: 242 -->

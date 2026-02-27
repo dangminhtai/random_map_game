@@ -16,9 +16,9 @@ class SeedExplorerGUI:
         self.width_tiles = 20
         self.height_tiles = 12
         self.screen_width = self.width_tiles * TILE_SIZE
-        self.screen_height = (self.height_tiles * TILE_SIZE) + 100 # Extra space for UI
+        self.screen_height = (self.height_tiles * TILE_SIZE) + 120 # Extra space for UI
         self.screen = pygame.display.set_mode((self.screen_width, self.screen_height))
-        pygame.display.set_caption("Seed Explorer - 🌊🌳🟩")
+        pygame.display.set_caption("Seed Explorer - 🌊🌳🟩 (Advanced Matrix Mode)")
         
         self.clock = pygame.time.Clock()
         self.running = True
@@ -26,15 +26,25 @@ class SeedExplorerGUI:
         self.last_message = ""
         self.steps = 0
         
-        # Font setup - Segoe UI Emoji is best for Windows
+        # Font setup
         try:
             self.emoji_font = pygame.font.SysFont("Segoe UI Emoji", TILE_SIZE - 10)
             self.ui_font = pygame.font.SysFont("Arial", 24)
+            self.small_font = pygame.font.SysFont("Arial", 18)
         except:
             self.emoji_font = pygame.font.SysFont(None, TILE_SIZE - 10)
             self.ui_font = pygame.font.SysFont(None, 24)
+            self.small_font = pygame.font.SysFont(None, 18)
 
-        self.seed_text = "42"
+        # Matrix and MOD inputs
+        self.inputs = {
+            "m00": "7", "m01": "2",
+            "m10": "3", "m11": "109",
+            "mod": "594"
+        }
+        self.input_order = ["m00", "m01", "m10", "m11", "mod"]
+        self.focus_idx = 0
+
         self.map_data = []
         self.player_pos = (0, 0)
         self.treasure_pos = (0, 0)
@@ -49,14 +59,22 @@ class SeedExplorerGUI:
 
     def start_game(self):
         try:
-            seed = int(self.seed_text)
+            matrix = [
+                [int(self.inputs["m00"]), int(self.inputs["m01"])],
+                [int(self.inputs["m10"]), int(self.inputs["m11"])]
+            ]
+            mod = int(self.inputs["mod"]) if self.inputs["mod"] else 594
         except ValueError:
-            seed = 42
+            # Fallback to defaults
+            matrix = [[7, 2], [3, 109]]
+            mod = 594
         
-        self.map_data, self.player_pos, self.treasure_pos = generate_map(self.width_tiles, self.height_tiles, seed)
+        self.map_data, self.player_pos, self.treasure_pos = generate_map(
+            self.width_tiles, self.height_tiles, matrix=matrix, mod=mod
+        )
         self.steps = 0
         self.state = "PLAYING"
-        self.last_message = "Exploring the wild..."
+        self.last_message = "Exploring the matrix..."
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -65,13 +83,17 @@ class SeedExplorerGUI:
             
             if self.state == "START":
                 if event.type == pygame.KEYDOWN:
+                    active_field = self.input_order[self.focus_idx]
+                    
                     if event.key == pygame.K_RETURN:
                         self.start_game()
+                    elif event.key == pygame.K_TAB:
+                        self.focus_idx = (self.focus_idx + 1) % len(self.input_order)
                     elif event.key == pygame.K_BACKSPACE:
-                        self.seed_text = self.seed_text[:-1]
+                        self.inputs[active_field] = self.inputs[active_field][:-1]
                     else:
                         if event.unicode.isdigit():
-                            self.seed_text += event.unicode
+                            self.inputs[active_field] += event.unicode
             
             elif self.state == "PLAYING":
                 if event.type == pygame.KEYDOWN:
@@ -88,7 +110,6 @@ class SeedExplorerGUI:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_r:
                         self.state = "START"
-                        self.seed_text = ""
 
     def update_player(self, move):
         nx = self.player_pos[0] + move[0]
@@ -122,13 +143,38 @@ class SeedExplorerGUI:
         self.screen.fill(COLOR_BG)
 
         if self.state == "START":
-            title = self.ui_font.render("SEED EXPLORER", True, COLOR_TEXT)
-            prompt = self.ui_font.render(f"Enter Seed: {self.seed_text}_", True, COLOR_TEXT)
-            hint = self.ui_font.render("Press ENTER to Start", True, (150, 150, 150))
+            title = self.ui_font.render("ADVANCED MATRIX SEEDER", True, (200, 255, 100))
+            self.screen.blit(title, (self.screen_width // 2 - title.get_width() // 2, 40))
+
+            # Draw 2x2 Matrix Input
+            mx, my = self.screen_width // 2 - 100, 100
+            cell_w, cell_h = 80, 40
             
-            self.screen.blit(title, (self.screen_width // 2 - title.get_width() // 2, 100))
-            self.screen.blit(prompt, (self.screen_width // 2 - prompt.get_width() // 2, 200))
-            self.screen.blit(hint, (self.screen_width // 2 - hint.get_width() // 2, 300))
+            for i in range(2):
+                for j in range(2):
+                    field = f"m{i}{j}"
+                    rect = pygame.Rect(mx + j * (cell_w + 10), my + i * (cell_h + 10), cell_w, cell_h)
+                    
+                    # Focus highlight
+                    color = (255, 255, 255) if self.input_order[self.focus_idx] == field else (100, 100, 100)
+                    pygame.draw.rect(self.screen, color, rect, 2)
+                    
+                    val_surf = self.ui_font.render(self.inputs[field], True, COLOR_TEXT)
+                    self.screen.blit(val_surf, (rect.x + 5, rect.y + 5))
+
+            # MOD Input
+            mod_label = self.small_font.render("MODULUS:", True, (150, 150, 150))
+            self.screen.blit(mod_label, (mx, my + 110))
+            mod_rect = pygame.Rect(mx + 90, my + 105, 100, 40)
+            mod_focus = (self.input_order[self.focus_idx] == "mod")
+            pygame.draw.rect(self.screen, (255, 255, 255) if mod_focus else (100, 100, 100), mod_rect, 2)
+            mod_surf = self.ui_font.render(self.inputs["mod"], True, COLOR_TEXT)
+            self.screen.blit(mod_surf, (mod_rect.x + 5, mod_rect.y + 5))
+
+            hint1 = self.small_font.render("TAB to switch fields", True, (120, 120, 120))
+            hint2 = self.ui_font.render("Press ENTER to Start Exploration", True, COLOR_TEXT)
+            self.screen.blit(hint1, (self.screen_width // 2 - hint1.get_width() // 2, my + 160))
+            self.screen.blit(hint2, (self.screen_width // 2 - hint2.get_width() // 2, my + 200))
 
         else:
             # Draw Map
