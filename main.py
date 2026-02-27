@@ -1,102 +1,80 @@
-import os
+import pygame
 import sys
-from random_map import generate_map, print_map
+from ui.constants import TILE_SIZE, FPS, init_fonts
+from ui.input_box import InputController
+from ui.renderer import GameRenderer
+from game.state import GameState
 
-class Game:
-    def __init__(self, width=20, height=10):
-        self.width = width
-        self.height = height
-        self.map_data = []
-        self.player_pos = (0, 0)
-        self.treasure_pos = (0, 0)
-        self.steps = 0
-        self.running = True
-        self.message = "Welcome to Seed Explorer! Find the 'X' (Treasure). Avoid '~' (Water)."
+def main():
+    pygame.init()
+    init_fonts()
 
-    def start(self):
-        try:
-            seed_input = input("Enter a Seed (number): ")
-            seed = int(seed_input)
-        except ValueError:
-            print("Invalid seed. Using default 42.")
-            seed = 42
-        
-        self.map_data, self.player_pos, self.treasure_pos = generate_map(self.width, self.height, seed)
-        self.game_loop()
+    # Game Config
+    width_tiles = 20
+    height_tiles = 12
+    screen_width = width_tiles * TILE_SIZE
+    screen_height = (height_tiles * TILE_SIZE) + 120
 
-    def clear_screen(self):
-        os.system('cls' if os.name == 'nt' else 'clear')
+    # Initialize Modules (Wiring dependencies)
+    renderer = GameRenderer(screen_width, screen_height)
+    game_state = GameState(width_tiles, height_tiles)
+    
+    # Input box setup for the START screen
+    default_inputs = {
+        "m00": "7", "m01": "2",
+        "m10": "3", "m11": "109",
+        "mod": "594"
+    }
+    input_ctrl = InputController(default_inputs)
+    
+    clock = pygame.time.Clock()
+    running = True
 
-    def render(self):
-        self.clear_screen()
-        print(f"--- SEED EXPLORER --- Steps: {self.steps}")
-        print_map(self.map_data)
-        print(f"\nMessage: {self.message}")
-        print("Controls: W (Up), S (Down), A (Left), D (Right), Q (Quit)")
+    while running:
+        # Event Handling
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            
+            if game_state.state == "START":
+                if input_ctrl.handle_event(event): # Returns True on ENTER key
+                    # Extract matrix and mod
+                    try:
+                        matrix = [
+                            [int(input_ctrl.inputs["m00"]), int(input_ctrl.inputs["m01"])],
+                            [int(input_ctrl.inputs["m10"]), int(input_ctrl.inputs["m11"])]
+                        ]
+                        mod = int(input_ctrl.inputs["mod"]) if input_ctrl.inputs["mod"] else 594
+                    except ValueError:
+                        matrix = [[7, 2], [3, 109]]
+                        mod = 594
+                    game_state.start_game(matrix, mod)
+            
+            elif game_state.state == "PLAYING":
+                if event.type == pygame.KEYDOWN:
+                    dx, dy = 0, 0
+                    if event.key in [pygame.K_UP, pygame.K_w]: dy = -1
+                    if event.key in [pygame.K_DOWN, pygame.K_s]: dy = 1
+                    if event.key in [pygame.K_LEFT, pygame.K_a]: dx = -1
+                    if event.key in [pygame.K_RIGHT, pygame.K_d]: dx = 1
+                    
+                    if dx != 0 or dy != 0:
+                        game_state.process_move(dx, dy)
+            
+            elif game_state.state in ["WON", "LOST"]:
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+                    game_state.state = "START"
 
-    def handle_input(self):
-        action = input("Move: ").lower()
-        if action == 'q':
-            self.running = False
-            return None
-        
-        move_map = {
-            'w': (0, -1),
-            's': (0, 1),
-            'a': (-1, 0),
-            'd': (1, 0)
-        }
-        return move_map.get(action)
-
-    def update(self, move):
-        if not move:
-            return
-
-        nx = self.player_pos[0] + move[0]
-        ny = self.player_pos[1] + move[1]
-
-        # Check boundaries
-        if 0 <= nx < self.width and 0 <= ny < self.height:
-            target_tile = self.map_data[ny][nx]
-
-            # Check for Water (Game Over)
-            if target_tile == "~":
-                self.message = "OH NO! You fell into the water and drowned. GAME OVER."
-                self.running = False
-                return
-
-            # Check for Win
-            if (nx, ny) == self.treasure_pos:
-                self.message = f"CONGRATULATIONS! You found the treasure in {self.steps + 1} steps!"
-                self.running = False
-                # Update map for visual
-                self.map_data[self.player_pos[1]][self.player_pos[0]] = "."
-                self.player_pos = (nx, ny)
-                self.map_data[ny][nx] = "P"
-                return
-
-            # Normal Move
-            # Clear old pos (assume it becomes land '.')
-            # In a more complex game, we'd store the tile beneath the player
-            self.map_data[self.player_pos[1]][self.player_pos[0]] = "."
-            self.player_pos = (nx, ny)
-            self.map_data[ny][nx] = "P"
-            self.steps += 1
-            self.message = "Moving..."
+        # Rendering
+        if game_state.state == "START":
+            renderer.draw_start_screen(input_ctrl)
         else:
-            self.message = "Ouch! You hit a wall."
+            renderer.draw_game_screen(game_state)
 
-    def game_loop(self):
-        while self.running:
-            self.render()
-            move = self.handle_input()
-            self.update(move)
-        
-        # Final render for result
-        self.render()
-        print("\nPress Enter to exit.")
-        input()
+        clock.tick(FPS)
+
+    pygame.quit()
+    sys.exit()
 
 if __name__ == "__main__":
-    game = Game()
-    game.start()
+    main()
