@@ -16,11 +16,11 @@
 - [x] Add Win/Loss overlays <!-- id: 122 -->
 
 ## Phase 4: UI/UX Improvements
-- [ ] Add Seed input box (using a simple text input logic or library) <!-- id: 130 -->
-- [ ] Display step counter and messages on screen <!-- id: 131 -->
+- [x] Add Seed input box (using a simple text input logic or library) <!-- id: 130 -->
+- [x] Display step counter and messages on screen <!-- id: 131 -->
 - [ ] Add background music or sound effects (optional) <!-- id: 132 -->
 
 ## Phase 5: Verification & Testing
-- [ ] Verify grid alignment and rendering <!-- id: 140 -->
-- [ ] Test collision detection in GUI <!-- id: 141 -->
-- [ ] Final push to Github <!-- id: 142 -->
+- [x] Verify grid alignment and rendering <!-- id: 140 -->
+- [x] Test collision detection in GUI <!-- id: 141 -->
+- [x] Final push to Github <!-- id: 142 -->
